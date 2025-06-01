@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <header>
+        <h1>Bingo Online</h1>
+    </header>
+    
+    <div class="sponsors-container" id="sponsors">
+        <!-- Patrocinadores serão carregados via JS -->
+    </div>
+    
+    <div class="main-content">
+        <div class="waiting-screen" id="waitingScreen">
+            <div class="loader"></div>
+            <p>Esperando o próximo sorteio</p>
+        </div>
+        
+        <div class="drawing-screen" id="drawingScreen" style="display: none;">
+            <div class="current-number" id="currentNumber">
+                <span id="numberDisplay">--</span>
+            </div>
+            
+            <div class="drawn-numbers">
+                <h2>Números Sorteados</h2>
+                <div class="numbers-grid" id="numbersGrid"></div>
+            </div>
+        </div>
+        
+        <div class="winner-screen" id="winnerScreen" style="display: none;">
+            <div class="winner-card">
+                <h2>Cartela Vencedora!</h2>
+                <div class="winner-info">
+                    <p><strong>ID:</strong> <span id="winnerId"></span></p>
+                    <p><strong>Nome:</strong> <span id="winnerName"></span></p>
+                    <div class="winner-numbers" id="winnerNumbers"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="prize-section">
+        <h2>Prêmio</h2>
+        <img id="prizeImage" src="" alt="Prêmio do Bingo">
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

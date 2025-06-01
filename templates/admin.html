@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-container">
+    <h1>Painel de Administração</h1>
+    
+    <div class="admin-section">
+        <h2>Gerenciar Cartelas</h2>
+        <form id="cardForm">
+            <div class="form-group">
+                <label for="cardId">ID da Cartela:</label>
+                <input type="text" id="cardId" required>
+            </div>
+            <div class="form-group">
+                <label for="cardName">Nome do Comprador:</label>
+                <input type="text" id="cardName" required>
+            </div>
+            <div class="form-group">
+                <label for="cardNumbers">Números (separados por vírgula):</label>
+                <input type="text" id="cardNumbers" placeholder="Ex: 1,5,10,15,20" required>
+            </div>
+            <button type="submit">Adicionar Cartela</button>
+        </form>
+        
+        <div class="cards-list">
+            <h3>Cartelas Cadastradas</h3>
+            <table id="cardsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Números</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="cardsTableBody">
+                    <!-- Cartelas serão carregadas via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="admin-section">
+        <h2>Configurações do Sorteio</h2>
+        
+        <div class="countdown-control">
+            <h3>Contagem Regressiva</h3>
+            <input type="datetime-local" id="countdownTime">
+            <button id="setCountdown">Definir Contagem</button>
+        </div>
+        
+        <div class="draw-control">
+            <h3>Controle do Sorteio</h3>
+            <button id="startDrawing">Iniciar Sorteio</button>
+            <button id="drawNumber" disabled>Sortear Número</button>
+            <button id="resetDrawing">Reiniciar Sorteio</button>
+        </div>
+    </div>
+    
+    <div class="admin-section">
+        <h2>Gerenciar Imagens</h2>
+        
+        <div class="image-upload">
+            <h3>Patrocinadores</h3>
+            <input type="file" id="sponsorImage" accept="image/*">
+            <button id="uploadSponsor">Upload Patrocinador</button>
+            
+            <div class="sponsors-preview" id="sponsorsPreview">
+                <!-- Patrocinadores serão carregados via JS -->
+            </div>
+        </div>
+        
+        <div class="image-upload">
+            <h3>Prêmio</h3>
+            <input type="file" id="prizeImage" accept="image/*">
+            <button id="uploadPrize">Upload Prêmio</button>
+            
+            <div class="prize-preview">
+                <img id="prizePreview" src="" alt="Prêmio">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}
