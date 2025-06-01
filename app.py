@@ -1,46 +1,32 @@
-import logging
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta
-import random
 import os
-from werkzeug.utils import secure_filename
+import random
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bingo.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///bingo.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/images/sponsors'
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
 db = SQLAlchemy(app)
 
-# Modelos
 class Card(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     card_id = db.Column(db.String(50), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    numbers = db.Column(db.String(255), nullable=False)  # Armazenar como string separada por vírgulas
+    numbers = db.Column(db.String(255), nullable=False)
     is_winner = db.Column(db.Boolean, default=False)
 
 class Settings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     countdown_time = db.Column(db.DateTime)
-    sponsor_images = db.Column(db.String(500))  # Armazenar como string separada por vírgulas
+    sponsor_images = db.Column(db.String(500))
     prize_image = db.Column(db.String(100))
-    drawn_numbers = db.Column(db.String(500))  # Armazenar como string separada por vírgulas
+    drawn_numbers = db.Column(db.String(500))
     is_drawing = db.Column(db.Boolean, default=False)
     has_winner = db.Column(db.Boolean, default=False)
 
-# Criar banco de dados
-with app.app_context():
-    db.create_all()
-
-# Funções auxiliares
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-# Rotas
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -49,9 +35,8 @@ def index():
 def admin():
     return render_template('admin.html')
 
-# API
 @app.route('/api/cards', methods=['GET', 'POST'])
-def cards():
+def handle_cards():
     if request.method == 'GET':
         cards = Card.query.all()
         return jsonify([{
@@ -67,13 +52,13 @@ def cards():
         new_card = Card(
             card_id=data['card_id'],
             name=data['name'],
-            numbers=','.join(map(str, data['numbers'])))
+            numbers=','.join(map(str, data['numbers']))
         db.session.add(new_card)
         db.session.commit()
-        return jsonify({'message': 'Cartela adicionada com sucesso!'}), 201
+        return jsonify({'success': True}), 201
 
 @app.route('/api/settings', methods=['GET', 'POST'])
-def settings():
+def handle_settings():
     if request.method == 'GET':
         settings = Settings.query.first()
         if not settings:
@@ -90,11 +75,7 @@ def settings():
     
     elif request.method == 'POST':
         data = request.json
-        settings = Settings.query.first()
-        
-        if not settings:
-            settings = Settings()
-            db.session.add(settings)
+        settings = Settings.query.first() or Settings()
         
         if 'countdown_time' in data:
             settings.countdown_time = datetime.fromisoformat(data['countdown_time']) if data['countdown_time'] else None
@@ -114,63 +95,26 @@ def settings():
         if 'has_winner' in data:
             settings.has_winner = data['has_winner']
         
-        db.session.commit()
-        return jsonify({'message': 'Configurações atualizadas!'})
-
-@app.route('/api/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'Nenhum arquivo enviado'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'Nenhum arquivo selecionado'}), 400
-    
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        return jsonify({'filename': filename})
-    
-    return jsonify({'error': 'Tipo de arquivo não permitido'}), 400
-
-@app.route('/api/start_drawing', methods=['POST'])
-def start_drawing():
-    settings = Settings.query.first()
-    if not settings:
-        settings = Settings()
         db.session.add(settings)
-    
-    settings.is_drawing = True
-    settings.has_winner = False
-    settings.drawn_numbers = ''
-    db.session.commit()
-    
-    # Resetar cartelas vencedoras
-    Card.query.update({'is_winner': False})
-    db.session.commit()
-    
-    return jsonify({'message': 'Sorteio iniciado!'})
+        db.session.commit()
+        return jsonify({'success': True})
 
-@app.route('/api/draw_number', methods=['POST'])
+@app.route('/api/draw', methods=['POST'])
 def draw_number():
     settings = Settings.query.first()
     if not settings or not settings.is_drawing:
         return jsonify({'error': 'Sorteio não iniciado'}), 400
     
-    # Gerar número aleatório que ainda não foi sorteado
     drawn_numbers = [int(n) for n in settings.drawn_numbers.split(',')] if settings.drawn_numbers else []
     available_numbers = [n for n in range(1, 76) if n not in drawn_numbers]
     
     if not available_numbers:
-        settings.is_drawing = False
-        db.session.commit()
-        return jsonify({'error': 'Todos os números já foram sorteados'}), 400
+        return jsonify({'error': 'Todos os números foram sorteados'}), 400
     
     new_number = random.choice(available_numbers)
     drawn_numbers.append(new_number)
     settings.drawn_numbers = ','.join(map(str, drawn_numbers))
     
-    # Verificar se alguma cartela ganhou
     cards = Card.query.all()
     for card in cards:
         card_numbers = [int(n) for n in card.numbers.split(',')]
@@ -192,11 +136,7 @@ def draw_number():
     db.session.commit()
     return jsonify({'number': new_number, 'has_winner': False})
 
-# Configurações para produção
-if __name__ != '__main__':
-    gunicorn_logger = logging.getLogger('gunicorn.error')
-    app.logger.handlers = gunicorn_logger.handlers
-    app.logger.setLevel(gunicorn_logger.level)
-
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
